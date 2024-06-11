@@ -1,0 +1,51 @@
+[*]
+[*] GTKWave Analyzer v3.3.118 (w)1999-2023 BSI
+[*] Mon Jun 10 04:38:50 2024
+[*]
+[dumpfile] "/home/focused_xy/cs/riscv-on-zynq7000/hardware/vsim/asm_tb.fst"
+[dumpfile_mtime] "Mon Jun 10 04:31:19 2024"
+[dumpfile_size] 6656
+[savefile] "/home/focused_xy/cs/riscv-on-zynq7000/hardware/gtkwave/asm.gtkw"
+[timestart] 0
+[size] 1920 1032
+[pos] -461 -217
+*-16.200001 93300 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] asm_tb.
+[treeopen] asm_tb.cpu.
+[sst_width] 246
+[signals_width] 270
+[sst_expanded] 1
+[sst_vpaned_height] 308
+@28
+asm_tb.clk
+asm_tb.rst
+@22
+asm_tb.cpu.pc_if[31:0]
+asm_tb.cpu.inst_if[31:0]
+@c00024
+asm_tb.cpu.ra1[4:0]
+@28
+(0)asm_tb.cpu.ra1[4:0]
+(1)asm_tb.cpu.ra1[4:0]
+(2)asm_tb.cpu.ra1[4:0]
+(3)asm_tb.cpu.ra1[4:0]
+(4)asm_tb.cpu.ra1[4:0]
+@1401204
+-group_end
+@24
+asm_tb.cpu.ra2[4:0]
+asm_tb.cpu.rd1[31:0]
+asm_tb.cpu.rd2[31:0]
+@22
+asm_tb.cpu.pc_ex[31:0]
+@24
+asm_tb.cpu.alu_ex[31:0]
+@28
+asm_tb.cpu.we
+@24
+asm_tb.cpu.rd_ex[4:0]
+@22
+asm_tb.cpu.wdata_ex[31:0]
+asm_tb.cpu.wbe_ex[3:0]
+[pattern_trace] 1
+[pattern_trace] 0

@@ -1,7 +1,7 @@
 SHELL := $(shell which bash) -o pipefail
 TESTS := $(filter-out fence_i.S ma_data.S,$(notdir $(wildcard riscv-tests/isa/rv32ui/*.S)))
 TESTS_HEX := $(subst .S,.hex,$(TESTS))
-GCC_OPTS := -march=rv32i -mabi=ilp32 -static -mcmodel=medany -fvisibility=hidden -nostdlib -nostartfiles -T env_151/link.ld -Wl,--build-id=none
+GCC_OPTS := -march=rv32i_zicsr -mabi=ilp32 -static -mcmodel=medany -fvisibility=hidden -nostdlib -nostartfiles -T env_151/link.ld -Wl,--build-id=none
 
 RISCV := riscv64-unknown-elf
 

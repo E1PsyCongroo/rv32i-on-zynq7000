@@ -41,11 +41,11 @@ def run_bench(
 
 
 def cleanup_isa_tests() -> None:
-    rmtree("sim/isa", ignore_errors=True)
+    rmtree("vsim/isa", ignore_errors=True)
 
 
 def cleanup_c_tests() -> None:
-    rmtree("sim/c_tests", ignore_errors=True)
+    rmtree("vsim/c_tests", ignore_errors=True)
 
 
 def get_grep_output(proc: CompletedProcess) -> str:
@@ -55,10 +55,10 @@ def get_grep_output(proc: CompletedProcess) -> str:
 
 def isa_test_success_cond(_: str) -> bool:
     proc_failed = run(
-        'grep -r -i "failed" sim/isa/*.log', shell=True, capture_output=True
+        'grep -r -i "failed" vsim/isa/*.log', shell=True, capture_output=True
     )
     proc_timout = run(
-        'grep -r -i "timeout" sim/isa/*.log', shell=True, capture_output=True
+        'grep -r -i "timeout" vsim/isa/*.log', shell=True, capture_output=True
     )
     tests_failed = get_grep_output(proc_failed) + get_grep_output(proc_timout)
     filtered_tests = list(
@@ -71,10 +71,10 @@ def isa_test_success_cond(_: str) -> bool:
 
 def c_test_success_cond(_: str) -> bool:
     proc_failed = run(
-        'grep -r -i "failed" sim/c_tests/*.log', shell=True, capture_output=True
+        'grep -r -i "failed" vsim/c_tests/*.log', shell=True, capture_output=True
     )
     proc_timout = run(
-        'grep -r -i "timeout" sim/c_tests/*.log', shell=True, capture_output=True
+        'grep -r -i "timeout" vsim/c_tests/*.log', shell=True, capture_output=True
     )
     tests_failed = get_grep_output(proc_failed) + get_grep_output(proc_timout)
     filtered_tests = list(filter(lambda l: l != "", tests_failed))
@@ -87,13 +87,13 @@ def silent_remove_factory(testbench: str, simulator: str) -> Callable[[], None]:
     def foo():
         try:
             if simulator == "vcs":
-                remove(f"sim/{testbench}.tb")
-                remove(f"sim/{testbench}.vpd")
-                rmtree(f"sim/{testbench}.tb.daidir")
+                remove(f"vsim/{testbench}.tb")
+                remove(f"vsim/{testbench}.vpd")
+                rmtree(f"vsim/{testbench}.tb.daidir")
             else:
-                remove(f"sim/{testbench}.tbi")
-                remove(f"sim/{testbench}.fst")
-            remove(f"sim/{testbench}.log")
+                remove(f"vsim/{testbench}.tbi")
+                remove(f"vsim/{testbench}.fst")
+            remove(f"vsim/{testbench}.log")
         except OSError:
             pass
 
@@ -103,33 +103,33 @@ def silent_remove_factory(testbench: str, simulator: str) -> Callable[[], None]:
 def main():
     makedirs(RESULT_DIR, exist_ok=True)
     parser = argparse.ArgumentParser(description="Run all RTL simulations and perform checks")
-    parser.add_argument("--simulator", type=str, choices=["vcs", "iverilog"], default="vcs", help="The RTL simulator to use")
+    parser.add_argument("--simulator", type=str, choices=["vcs", "iverilog"], default="iverilog", help="The RTL simulator to use")
     args = parser.parse_args()
     waveform_suffix = "vpd" if args.simulator == "vcs" else "fst"
     run_bench(
-        f"sim/asm_tb.{waveform_suffix}",
+        f"vsim/asm_tb.{waveform_suffix}",
         silent_remove_factory("asm_tb", args.simulator),
         lambda stdout: "ALL ASSEMBLY TESTS PASSED!" in stdout,
     )
     run_bench(
-        f"sim/cpu_tb.{waveform_suffix}",
+        f"vsim/cpu_tb.{waveform_suffix}",
         silent_remove_factory("cpu_tb", args.simulator),
         lambda stdout: "All tests passed!" in stdout,
     )
     run_bench("isa-tests", cleanup_isa_tests, isa_test_success_cond)
     run_bench("c-tests", cleanup_c_tests, c_test_success_cond)
     run_bench(
-        f"sim/uart_parse_tb.{waveform_suffix}",
+        f"vsim/uart_parse_tb.{waveform_suffix}",
         silent_remove_factory("uart_parse_tb", args.simulator),
         lambda stdout: "CSR test PASSED! Strings matched." in stdout,
     )
     run_bench(
-        f"sim/echo_tb.{waveform_suffix}",
+        f"vsim/echo_tb.{waveform_suffix}",
         silent_remove_factory("echo_tb", args.simulator),
         lambda stdout: "Test passed!" in stdout,
     )
     run_bench(
-        f"sim/bios_tb.{waveform_suffix}",
+        f"vsim/bios_tb.{waveform_suffix}",
         silent_remove_factory("bios_tb", args.simulator),
         lambda stdout: "BIOS testbench done! Num failed tests:          0" in stdout,
     )

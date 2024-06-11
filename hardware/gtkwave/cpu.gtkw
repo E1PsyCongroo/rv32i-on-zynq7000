@@ -1,0 +1,43 @@
+[*]
+[*] GTKWave Analyzer v3.3.118 (w)1999-2023 BSI
+[*] Mon Jun 10 13:43:55 2024
+[*]
+[dumpfile] "(null)"
+[savefile] "/home/focused_xy/cs/riscv-on-zynq7000/hardware/gtkwave/cpu.gtkw"
+[timestart] 1540100
+[size] 1920 1032
+[pos] -1 -1
+*-14.700000 1605500 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] cpu_tb.
+[treeopen] cpu_tb.cpu.
+[sst_width] 246
+[signals_width] 317
+[sst_expanded] 1
+[sst_vpaned_height] 308
+@28
+cpu_tb.clk
+cpu_tb.rst
+@820
+cpu_tb.current_test_type[255:0]
+@22
+cpu_tb.cpu.pc_in[31:0]
+cpu_tb.cpu.pc_if[31:0]
+cpu_tb.cpu.RS1[31:0]
+cpu_tb.cpu.RS2[31:0]
+@420
+cpu_tb.cpu.imm[31:0]
+@22
+cpu_tb.cpu.alu.op[3:0]
+cpu_tb.cpu.alu.out[31:0]
+cpu_tb.cpu.alu.ina[31:0]
+@23
+cpu_tb.cpu.alu.inb[31:0]
+@22
+cpu_tb.cpu.alu_sum[31:0]
+cpu_tb.cpu.alu_out[31:0]
+cpu_tb.cpu.inst_if[31:0]
+cpu_tb.cpu.alu_ex[31:0]
+@28
+cpu_tb.cpu.flush
+[pattern_trace] 1
+[pattern_trace] 0

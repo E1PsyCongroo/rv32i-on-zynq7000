@@ -4,79 +4,122 @@ SCRIPTS                 := $(ABS_TOP)/scripts
 VIVADO                  ?= vivado
 VIVADO_OPTS             ?= -nolog -nojournal -mode batch
 FPGA_PART               ?= xc7z020clg400-1
-RTL                     += $(subst /cygdrive/c/,C:/,$(shell find $(ABS_TOP)/src -type f -name "*.v"))
-CONSTRAINTS             += $(subst /cygdrive/c/,C:/,$(shell find $(ABS_TOP)/src -type f -name "*.xdc"))
+RTL                     += $(subst /cygdrive/c/,C:/,$(shell find $(ABS_TOP)/vsrc -type f -name "*.v"))
+CONSTRAINTS             += $(subst /cygdrive/c/,C:/,$(shell find $(ABS_TOP)/vsrc -type f -name "*.xdc"))
 TOP                     ?= z1top
-VCS                     := vcs -full64
-VCS_OPTS                := -notice -line +lint=all,noVCDE,noNS,noSVA-UA -sverilog -timescale=1ns/10ps -debug_acc+pp+f+fn+dmptf -debug_region+cell+encrypt +define+ABS_TOP=$(ABS_TOP) +incdir+$(ABS_TOP)/src/riscv_core
-SIM_RTL                 := $(subst /cygdrive/c/,C:/,$(shell find $(ABS_TOP)/sim -type f -name "*.v"))
-SIM_MODELS              := $(subst /cygdrive/c/,C:/,$(shell find $(ABS_TOP)/sim_models -type f -name "*.v"))
+BUILD_DIR 							:= build
+SYNTH_DIR 							:= $(BUILD_DIR)/synth
+IMPL_DIR	 							:= $(BUILD_DIR)/impl
+
+SIM_RTL                 := $(subst /cygdrive/c/,C:/,$(shell find $(ABS_TOP)/vsim -type f -name "*.v"))
+SIM_MODELS              := $(subst /cygdrive/c/,C:/,$(shell find $(ABS_TOP)/vsim_models -type f -name "*.v"))
 IVERILOG                := iverilog
-IVERILOG_OPTS           := -Ttyp -D IVERILOG=1 -g2012 -gassertions -Wall -Wno-timescale -D ABS_TOP=$(ABS_TOP) -I $(ABS_TOP)/src/riscv_core -I $(ABS_TOP)/sim
+IVERILOG_OPTS           := -Ttyp -D IVERILOG=1 -g2012 -gassertions -Wall -Wno-timescale -D ABS_TOP=$(ABS_TOP) -I $(ABS_TOP)/vsrc/riscv_core -I $(ABS_TOP)/vsim
 VVP                     := vvp
+
 ISA_TESTS               := $(subst /cygdrive/c/,C:/,$(shell find $(ABS_TOP)/../software/riscv-isa-tests -type f -name "*.hex"))
 ISA_TESTS_FILES         := $(notdir $(ISA_TESTS))
-ISA_TESTS_FST           := $(addprefix sim/isa/,$(subst .hex,.fst,$(ISA_TESTS_FILES)))
+ISA_TESTS_FST           := $(addprefix vsim/isa/,$(subst .hex,.fst,$(ISA_TESTS_FILES)))
 C_TESTS                 := $(subst /cygdrive/c/,C:/,$(shell find $(ABS_TOP)/../software/c_tests -type f -name "*.c"))
 C_TESTS_FILES           := $(notdir $(C_TESTS))
-C_TESTS_FST             := $(addprefix sim/c_tests/,$(subst .c,.fst,$(C_TESTS_FILES)))
+C_TESTS_FST             := $(addprefix vsim/c_tests/,$(subst .c,.fst,$(C_TESTS_FILES)))
 SMALL_TESTS             := $(subst /cygdrive/c/,C:/,$(shell find $(ABS_TOP)/../software/small -type f -name "*.c"))
 SMALL_TESTS_FILES       := $(notdir $(SMALL_TESTS))
-SMALL_TESTS_FST         := $(addprefix sim/small/,$(subst .c,.fst,$(SMALL_TESTS_FILES)))
+SMALL_TESTS_FST         := $(addprefix vsim/small/,$(subst .c,.fst,$(SMALL_TESTS_FILES)))
 MYPORT                  ?= MYPORT_NOT_SET
 
-all: build/impl/$(TOP).bit
+VERILATOR 							?= verilator
+VERILATOR_OPTS 					+= -MMD --build -cc -O3 --x-assign fast --x-initial fast --noassert --trace
+VERILATOR_DIR 					:= $(BUILD_DIR)/verilator
+OBJ_DIR 								:= $(VERILATOR_DIR)/obj_dir
+CSRCS 									:= $(shell find $(ABS_TOP)/csrc -type f -name "*.c" -or -name "*.cc" -or -name "*.cpp")
 
-sim/%.tb: sim/%.v $(RTL) $(SIM_MODELS)
-	cd sim && $(VCS) $(VCS_OPTS) -o $*.tb $(RTL) $(SIM_MODELS) $*.v -top $* -top glbl
+NXDC_FILES							:= $(abspath ./constr/top.nxdc)
+# constraint file
+SRC_AUTO_BIND = $(abspath $(VERILATOR_DIR)/auto_bind.cpp)
+$(SRC_AUTO_BIND): $(NXDC_FILES)
+	@mkdir -p $(VERILATOR_DIR)
+	python3 $(NVBOARD_HOME)/scripts/auto_pin_bind.py $^ $@
 
-sim/%.vpd: sim/%.tb
-	cd sim && ./$*.tb +verbose=1 +vpdfile+$*.vpd |& tee $*.log
+# rules for NVBoard
+include $(NVBOARD_HOME)/scripts/nvboard.mk
 
-sim/%.tbi: sim/%.v $(RTL)
-	cd sim && $(IVERILOG) $(IVERILOG_OPTS) -o $*.tbi $*.v $(RTL) $(SIM_MODELS)
+# rules for verilator
+INCFLAGS 								:= $(addprefix -I, $(INC_PATH))
+CXXFLAGS 								+= $(INCFLAGS)
 
-sim/%.fst: sim/%.tbi
-	cd sim && $(VVP) $*.tbi -fst |& tee $*.log
+V%: $(VERILATOR_DIR)/V%
+	@echo "Run $<"
+	$<
+
+$(VERILATOR_DIR)/V$(TOP): $(abspath csrc/$(TOP).cpp) $(RTL) $(SRC_AUTO_BIND) $(NVBOARD_ARCHIVE)
+	@mkdir -p $(VERILATOR_DIR)
+	@echo "Building $@"
+	@rm -rf $(OBJ_DIR)/
+	$(VERILATOR) $(VERILATOR_OPTS) \
+		--top-module $* $^ \
+		-I$(ABS_TOP)/vsrc/riscv_core $(ABS_TOP)/stubs/PLLE2_ADV.v $(ABS_TOP)/vsim_models/BUFG.v $(ABS_TOP)/stubs/IBUF.v \
+		$(addprefix -CFLAGS , $(CXXFLAGS)) -CFLAGS -DTOP_NAME="\"V$*\"" \
+		$(addprefix -LDFLAGS , $(LDFLAGS)) \
+		--Mdir $(OBJ_DIR) --exe -o $(abspath $@)
+
+
+$(VERILATOR_DIR)/V%: $(abspath csrc/%.cpp) $(RTL)
+	@mkdir -p $(VERILATOR_DIR)
+	@echo "Building $@"
+	@rm -rf $(OBJ_DIR)/
+	$(VERILATOR) $(VERILATOR_OPTS) \
+		--top-module $* $^ \
+		-I$(ABS_TOP)/vsrc/riscv_core $(ABS_TOP)/stubs/PLLE2_ADV.v $(ABS_TOP)/vsim_models/BUFG.v $(ABS_TOP)/stubs/IBUF.v \
+		-CFLAGS -DTOP_NAME="\"V$*\"" \
+		--Mdir $(OBJ_DIR) --exe -o $(abspath $@)
+
+all: $(IMPL_DIR)/$(TOP).bit
+
+vsim/%.tbi: vsim/%.v $(RTL)
+	cd vsim && $(IVERILOG) $(IVERILOG_OPTS) -o $*.tbi $*.v $(RTL) $(SIM_MODELS)
+
+vsim/%.fst: vsim/%.tbi
+	cd vsim && $(VVP) $*.tbi -fst |& tee $*.log
 
 # ISA Tests
-sim/isa/isa_tb.tbi: sim/isa_tb.v $(RTL) $(SIM_MODELS)
-	mkdir -p sim/isa
-	cd sim/isa && $(IVERILOG) $(IVERILOG_OPTS) -o isa_tb.tbi ../isa_tb.v $(RTL) $(SIM_MODELS)
+vsim/isa/isa_tb.tbi: vsim/isa_tb.v $(RTL) $(SIM_MODELS)
+	mkdir -p vsim/isa
+	cd vsim/isa && $(IVERILOG) $(IVERILOG_OPTS) -o isa_tb.tbi ../isa_tb.v $(RTL) $(SIM_MODELS)
 
-sim/isa/%.fst: sim/isa/isa_tb.tbi $(ABS_TOP)/../software/riscv-isa-tests/%.hex
-	@cd sim/isa && $(VVP) isa_tb.tbi -fst +hex_file=$(word 2,$^) +test_name=$(basename $(notdir $(word 2,$^))) |& tee $(basename $(notdir $(word 2,$^))).log |& grep -v "readmemh" |& grep -v "FST info"
+vsim/isa/%.fst: vsim/isa/isa_tb.tbi $(ABS_TOP)/../software/riscv-isa-tests/%.hex
+	@cd vsim/isa && $(VVP) isa_tb.tbi -fst +hex_file=$(word 2,$^) +test_name=$(basename $(notdir $(word 2,$^))) |& tee $(basename $(notdir $(word 2,$^))).log |& grep -v "readmemh" |& grep -v "FST info"
 
 isa-tests: $(ISA_TESTS_FST)
 
 # C Tests
-sim/c_tests/c_tests_tb.tbi: sim/c_tests_tb.v $(RTL) $(SIM_MODELS)
-	mkdir -p sim/c_tests
-	cd sim/c_tests && $(IVERILOG) $(IVERILOG_OPTS) -o c_tests_tb.tbi ../c_tests_tb.v $(RTL) $(SIM_MODELS)
+vsim/c_tests/c_tests_tb.tbi: vsim/c_tests_tb.v $(RTL) $(SIM_MODELS)
+	mkdir -p vsim/c_tests
+	cd vsim/c_tests && $(IVERILOG) $(IVERILOG_OPTS) -o c_tests_tb.tbi ../c_tests_tb.v $(RTL) $(SIM_MODELS)
 
-sim/c_tests/%.fst: sim/c_tests/c_tests_tb.tbi $(ABS_TOP)/../software/c_tests/%
-	@cd sim/c_tests && $(VVP) c_tests_tb.tbi -fst +hex_file=$(word 2,$^)/$*.hex +test_name=$(basename $(notdir $(word 2,$^))) |& tee $(basename $(notdir $(word 2,$^))).log |& grep -v "readmemh" |& grep -v "FST info"
+vsim/c_tests/%.fst: vsim/c_tests/c_tests_tb.tbi $(ABS_TOP)/../software/c_tests/%
+	@cd vsim/c_tests && $(VVP) c_tests_tb.tbi -fst +hex_file=$(word 2,$^)/$*.hex +test_name=$(basename $(notdir $(word 2,$^))) |& tee $(basename $(notdir $(word 2,$^))).log |& grep -v "readmemh" |& grep -v "FST info"
 
 c-tests: $(C_TESTS_FST)
 
 # Small Tests
-sim/small/small_tb.tbi: sim/small_tb.v $(RTL) $(SIM_MODELS)
-	mkdir -p sim/small
-	cd sim/small && $(IVERILOG) $(IVERILOG_OPTS) -o small_tb.tbi ../small_tb.v $(RTL) $(SIM_MODELS)
+vsim/small/small_tb.tbi: vsim/small_tb.v $(RTL) $(SIM_MODELS)
+	mkdir -p vsim/small
+	cd vsim/small && $(IVERILOG) $(IVERILOG_OPTS) -o small_tb.tbi ../small_tb.v $(RTL) $(SIM_MODELS)
 
-sim/small/%.fst: sim/small/small_tb.tbi $(ABS_TOP)/../software/small/%
-	@cd sim/small && $(VVP) small_tb.tbi -fst +hex_file=$(word 2,$^)/$*.hex +test_name=$(basename $(notdir $(word 2,$^))) |& tee $(basename $(notdir $(word 2,$^))).log |& grep -v "readmemh" |& grep -v "FST info"
+vsim/small/%.fst: vsim/small/small_tb.tbi $(ABS_TOP)/../software/small/%
+	@cd vsim/small && $(VVP) small_tb.tbi -fst +hex_file=$(word 2,$^)/$*.hex +test_name=$(basename $(notdir $(word 2,$^))) |& tee $(basename $(notdir $(word 2,$^))).log |& grep -v "readmemh" |& grep -v "FST info"
 
 small-tests: $(SMALL_TESTS_FST)
 
-build/target.tcl: $(RTL) $(CONSTRAINTS)
-	mkdir -p build
+$(BUILD_DIR)/target.tcl: $(RTL) $(CONSTRAINTS)
+	mkdir -p $(BUILD_DIR)
 	truncate -s 0 $@
 	echo "set ABS_TOP                        $(ABS_TOP)"    >> $@
 	echo "set TOP                            $(TOP)"    >> $@
 	echo "set FPGA_PART                      $(FPGA_PART)"  >> $@
 	echo "set MYPORT                         $(MYPORT)"  >> $@
-	echo "set_param general.maxThreads       4"    >> $@
+	echo "set_param general.maxThreads       6"    >> $@
 	echo "set_param general.maxBackupLogs    0"    >> $@
 	echo -n "set RTL { " >> $@
 	FLIST="$(RTL)"; for f in $$FLIST; do echo -n "$$f " ; done >> $@
@@ -85,54 +128,54 @@ build/target.tcl: $(RTL) $(CONSTRAINTS)
 	FLIST="$(CONSTRAINTS)"; for f in $$FLIST; do echo -n "$$f " ; done >> $@
 	echo "}" >> $@
 
-setup: build/target.tcl
+setup: $(BUILD_DIR)/target.tcl
 
-elaborate: build/target.tcl $(SCRIPTS)/elaborate.tcl
-	mkdir -p ./build
-	cd ./build && $(VIVADO) $(VIVADO_OPTS) -source $(SCRIPTS)/elaborate.tcl |& tee elaborate.log
+elaborate: $(BUILD_DIR)/target.tcl $(SCRIPTS)/elaborate.tcl
+	mkdir -p ./$(BUILD_DIR)
+	cd ./$(BUILD_DIR) && $(VIVADO) $(VIVADO_OPTS) -source $(SCRIPTS)/elaborate.tcl |& tee elaborate.log
 
-build/synth/$(TOP).dcp: build/target.tcl $(SCRIPTS)/synth.tcl
-	mkdir -p ./build/synth/
-	cd ./build/synth/ && $(VIVADO) $(VIVADO_OPTS) -source $(SCRIPTS)/synth.tcl |& tee synth.log
+$(SYNTH_DIR)/$(TOP).dcp: $(BUILD_DIR)/target.tcl $(SCRIPTS)/synth.tcl
+	mkdir -p ./$(SYNTH_DIR)/
+	cd ./$(SYNTH_DIR)/ && $(VIVADO) $(VIVADO_OPTS) -source $(SCRIPTS)/synth.tcl |& tee synth.log
 
-synth: build/synth/$(TOP).dcp
+synth: $(SYNTH_DIR)/$(TOP).dcp
 
-build/impl/$(TOP).bit: build/synth/$(TOP).dcp $(SCRIPTS)/impl.tcl
-	mkdir -p ./build/impl/
-	cd ./build/impl && $(VIVADO) $(VIVADO_OPTS) -source $(SCRIPTS)/impl.tcl |& tee impl.log
+$(IMPL_DIR)/$(TOP).bit: $(SYNTH_DIR)/$(TOP).dcp $(SCRIPTS)/impl.tcl
+	mkdir -p ./$(IMPL_DIR)/
+	cd ./$(IMPL_DIR) && $(VIVADO) $(VIVADO_OPTS) -source $(SCRIPTS)/impl.tcl |& tee impl.log
 
-impl: build/impl/$(TOP).bit
+impl: $(IMPL_DIR)/$(TOP).bit
 
-program: build/impl/$(TOP).bit $(SCRIPTS)/program.tcl
-	cd build/impl && $(VIVADO) $(VIVADO_OPTS) -source $(SCRIPTS)/program.tcl
+program: $(IMPL_DIR)/$(TOP).bit $(SCRIPTS)/program.tcl
+	cd $(IMPL_DIR) && $(VIVADO) $(VIVADO_OPTS) -source $(SCRIPTS)/program.tcl
 
 program-force:
-	cd build/impl && $(VIVADO) $(VIVADO_OPTS) -source $(SCRIPTS)/program.tcl
+	cd $(IMPL_DIR) && $(VIVADO) $(VIVADO_OPTS) -source $(SCRIPTS)/program.tcl
 
-remote: build/impl/$(TOP).bit $(SCRIPTS)/program.tcl
-	cd build/impl && $(VIVADO) $(VIVADO_OPTS) -source $(SCRIPTS)/remote.tcl
+remote: $(IMPL_DIR)/$(TOP).bit $(SCRIPTS)/program.tcl
+	cd $(IMPL_DIR) && $(VIVADO) $(VIVADO_OPTS) -source $(SCRIPTS)/remote.tcl
 
 remote-force:
-	cd build/impl && $(VIVADO) $(VIVADO_OPTS) -source $(SCRIPTS)/remote.tcl
+	cd $(IMPL_DIR) && $(VIVADO) $(VIVADO_OPTS) -source $(SCRIPTS)/remote.tcl
 
-vivado: build
-	cd build && nohup $(VIVADO) </dev/null >/dev/null 2>&1 &
+vivado: $(BUILD_DIR)
+	cd $(BUILD_DIR) && nohup $(VIVADO) </dev/null >/dev/null 2>&1 &
 
 lint:
-	verilator -DABS_TOP=$(ABS_TOP) --lint-only --top-module $(TOP) $(RTL) -I$(ABS_TOP)/src/riscv_core $(ABS_TOP)/stubs/PLLE2_ADV.v $(ABS_TOP)/sim_models/BUFG.v $(ABS_TOP)/stubs/IBUF.v
+	verilator -DABS_TOP=$(ABS_TOP) --lint-only --top-module $(TOP) $(RTL) -I$(ABS_TOP)/vsrc/riscv_core $(ABS_TOP)/stubs/PLLE2_ADV.v $(ABS_TOP)/vsim_models/BUFG.v $(ABS_TOP)/stubs/IBUF.v
 
 screen:
 	screen /dev/ttyUSB0 115200
 
-clean-sim:
-	rm -rf *.daidir sim/output.txt \
-	sim/*.tb sim/*.daidir sim/csrc \
-	sim/ucli.key sim/*.vpd sim/*.vcd \
-	sim/*.tbi sim/*.fst sim/*.jou sim/*.log sim/*.out \
-	sim/isa sim/c_tests sim/small
+clean-vsim:
+	rm -rf *.daidir vsim/output.txt \
+	vsim/*.tb vsim/*.daidir vsim/csrc \
+	vsim/ucli.key vsim/*.vpd vsim/*.vcd \
+	vsim/*.tbi vsim/*.fst vsim/*.jou vsim/*.log vsim/*.out \
+	vsim/isa vsim/c_tests vsim/small
 
 clean-build:
-	rm -rf ./build
+	rm -rf ./$(BUILD_DIR)
 
-.PHONY: setup synth impl program program-force remote remote-force vivado all clean-build clean-sim all
-.PRECIOUS: sim/%.tb sim/%.tbi sim/%.fst sim/%.vpd
+.PHONY: setup synth impl program program-force remote remote-force vivado all clean-build clean-vsim all V%
+.PRECIOUS: vsim/%.tbi vsim/%.fst $(VERILATOR_DIR)/V%

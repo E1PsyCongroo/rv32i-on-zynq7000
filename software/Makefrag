@@ -8,13 +8,13 @@ CSRCS := $(wildcard *.c)
 SSRCS := $(wildcard *.s)
 LDSRC := $(TARGET).ld
 
-GCC_OPTS += -mabi=ilp32 -march=rv32i -static -mcmodel=medany -nostdlib -nostartfiles -T $(LDSRC)
+GCC_OPTS += -mabi=ilp32 -march=rv32i_zicsr -static -mcmodel=medany -nostdlib -nostartfiles -fno-builtin -T $(LDSRC)
 
 all: $(TARGET).elf
 
 SOURCES = $(CSRCS) $(SSRCS)
 ifeq ($(INCLUDE_LIB), true)
-	SOURCES += $(LIB_SOURCES)
+	SOURCES += $(LIB_SOURCES) $(LIB_PATH)/libgcc.a
 endif
 
 # objdump is called before strip because it inlines functions and makes the assembly harder to read
