@@ -20,8 +20,15 @@ static const char mainargs[] = MAINARGS;
 #define UTRAN_CTRL (*((volatile uint32_t*)0x80000000) & 0x01)
 #define UTRAN_DATA (*((volatile uint32_t*)0x80000008))
 void putch(char ch) {
-  while (!UTRAN_CTRL) ;
-  UTRAN_DATA = ch;
+  if (ch == '\n') {
+    while (!UTRAN_CTRL) ;
+    UTRAN_DATA = '\r';
+    while (!UTRAN_CTRL) ;
+    UTRAN_DATA = ch;
+  } else {
+    while (!UTRAN_CTRL) ;
+    UTRAN_DATA = ch;
+  }
 }
 char getch(void) {
   while (!URECV_CTRL) ;

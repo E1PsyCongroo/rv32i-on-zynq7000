@@ -14,7 +14,7 @@ all: $(TARGET).elf
 
 SOURCES = $(CSRCS) $(SSRCS)
 ifeq ($(INCLUDE_LIB), true)
-	SOURCES += $(LIB_SOURCES) $(LIB_PATH)/libgcc.a
+	SOURCES += $(LIB_SOURCES)
 endif
 
 # objdump is called before strip because it inlines functions and makes the assembly harder to read

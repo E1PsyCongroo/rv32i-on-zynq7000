@@ -177,7 +177,8 @@ module cpu #(
     ) u_flush (
         .q      ( flush     ),
         .d      ( jmp_flag  ),
-        .rst    ( rst       ),
+        // .rst    ( rst       ),
+        .rst    ( 1         ),
         .clk    ( clk       )
     );
 

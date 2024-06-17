@@ -2,7 +2,7 @@
 [*] GTKWave Analyzer v3.3.118 (w)1999-2023 BSI
 [*] Mon Jun 10 13:43:55 2024
 [*]
-[dumpfile] "(null)"
+[dumpfile] "/home/focused_xy/cs/riscv-on-zynq7000/hardware/vsim/cpu_tb.fst"
 [savefile] "/home/focused_xy/cs/riscv-on-zynq7000/hardware/gtkwave/cpu.gtkw"
 [timestart] 1540100
 [size] 1920 1032

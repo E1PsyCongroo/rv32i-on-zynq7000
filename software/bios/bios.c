@@ -56,7 +56,7 @@ int main(void) {
     uwrite_int8s("\r\n");
 
     for ( ; ; ) {
-        uwrite_int8s("151> ");
+        uwrite_int8s("hdu> ");
 
         int8_t buffer[BUFFER_LEN];
         int8_t* input = read_token(buffer, BUFFER_LEN, " \x0d");
