@@ -356,6 +356,16 @@ module cpu #(
         .cycleCount 	( cycleCount  )
     );
 
+    wire [64:0]     usCount;
+
+    timer # (
+        .CPU_CLOCK_FREQ ( CPU_CLOCK_FREQ    )
+    ) u_timer (
+        .clk            ( clk               ),
+        .rst            ( rst               ),
+        .usCount        ( usCount           )
+    );
+
     assign uart_tx_data_in = wdata[7:0];
     assign uart_tx_data_in_valid = st_type && (alu_out == 32'h80000008);
 
@@ -397,6 +407,8 @@ module cpu #(
         28'h0000004: io_out = { 24'b0, uart_rx_data_out };
         28'h0000010: io_out = cycleCount;
         28'h0000014: io_out = instCount;
+        28'h0000018: io_out = usCount[31:0];
+        28'h000001C: io_out = usCount[63:32];
         default: io_out = 32'b0;
         endcase
     end

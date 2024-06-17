@@ -1,8 +1,6 @@
-module synchronizer #(
-    parameter WIDTH = 1
-) (
-    input clk,
+module synchronizer #(parameter WIDTH = 1) (
     input [WIDTH-1:0] async_signal,
+    input clk,
     output [WIDTH-1:0] sync_signal
 );
     // TODO: Create your 2 flip-flop synchronizer here
@@ -11,10 +9,22 @@ module synchronizer #(
     // and should output a vector of WIDTH-bit synchronous signals
     // that are synchronized to the input clk
 
-    reg [WIDTH-1:0] next_signal = 0, cur_signal = 0;
-    always @(posedge clk) begin
-        cur_signal <= next_signal;
-        next_signal <= async_signal;
-    end
-    assign sync_signal = cur_signal;
+    wire [WIDTH-1:0] mid_signal;
+
+    REGISTER # (
+        .N      ( WIDTH         )
+    ) u_reg1 (
+        .q   	( mid_signal    ),
+        .d   	( async_signal  ),
+        .clk 	( clk           )
+    );
+
+    REGISTER # (
+        .N      ( WIDTH         )
+    ) u_reg2 (
+        .q   	( sync_signal   ),
+        .d   	( mid_signal    ),
+        .clk 	( clk           )
+    );
+
 endmodule

@@ -48,6 +48,14 @@
 `define FNC_SH          3'b001
 `define FNC_SW          3'b010
 
+// CSR function codes
+`define FUNC_CSRRW      3'b001
+`define FUNC_CSRRS      3'b010
+`define FUNC_CSRRC      3'b011
+`define FUNC_CSRRWI     3'b101
+`define FUNC_CSRRSI     3'b110
+`define FUNC_CSRRCI     3'b111
+
 // Arithmetic R-type and I-type functions codes
 `define FNC_ADD_SUB     3'b000
 `define FNC_SLL         3'b001

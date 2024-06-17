@@ -2,7 +2,7 @@
 
 module z1top #(
     parameter BAUD_RATE = 115_200,
-    parameter CPU_CLOCK_PERIOD = 20,
+    parameter CPU_CLOCK_PERIOD = 16,
     parameter BIOS_MIF_HEX = `STRINGIFY_BIOS(`ABS_TOP)
 ) (
     input CLK_125MHZ_FPGA,
@@ -86,8 +86,7 @@ module z1top #(
         .BIOS_MIF_HEX(BIOS_MIF_HEX)
     ) cpu (
         .clk(cpu_clk),
-        .rst(BUTTONS[0]),
-        // .rst(cpu_reset),
+        .rst(cpu_reset),
         .bp_enable(switches_sync[0]),
         .serial_out(cpu_tx),
         .serial_in(cpu_rx)

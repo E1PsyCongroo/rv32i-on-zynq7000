@@ -14,8 +14,21 @@ Area heap = RANGE(&_heap_start, PMEM_END);
 #endif
 static const char mainargs[] = MAINARGS;
 
+#define URECV_CTRL (*((volatile uint32_t*)0x80000000) & 0x02)
+#define URECV_DATA (*((volatile uint32_t*)0x80000004) & 0xff)
+
+#define UTRAN_CTRL (*((volatile uint32_t*)0x80000000) & 0x01)
+#define UTRAN_DATA (*((volatile uint32_t*)0x80000008))
 void putch(char ch) {
+  while (!UTRAN_CTRL) ;
+  UTRAN_DATA = ch;
 }
+char getch(void) {
+  while (!URECV_CTRL) ;
+  char ch = URECV_DATA;
+  return ch;
+}
+
 
 void halt(int code) {
   while (1);

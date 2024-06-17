@@ -14,6 +14,8 @@ void bf();
 int main(const char *args) {
   ioe_init();
 
+// char getch();
+  // switch (getch()) {
   switch (args[0]) {
     case '1': ant(); break;
     case '2': galton(); break;

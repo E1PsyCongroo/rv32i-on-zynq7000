@@ -3,25 +3,17 @@
 ## Simulation
 ### iverilog
 ```bash
-make sim/cpu_tb.fst
+make vsim/cpu_tb.fst
 # logfile
-cat sim/cpu_tb.log
+cat vsim/cpu_tb.log
 # waveform
-gtkwave sim/cpu_tb.fst &
+gtkwave vsim/cpu_tb.fst &
 ```
 
-### VCS
-```bash
-make sim/cpu_tb.vpd
-# logfile
-cat sim/cpu_tb.log
-# waveform
-dve -vpd sim/cpu_tb.vpd &
-```
 
 ###  Clean
-- Clean simulation outputs: `make clean-sim`
-- Forcefully re-run a testbench: `make -B sim/cpu_tb.fst`
+- Clean simulation outputs: `make clean-vsim`
+- Forcefully re-run a testbench: `make -B vsim/cpu_tb.fst`
 
 ## CAD Flow
 - Lint RTL with verilator: `make lint`

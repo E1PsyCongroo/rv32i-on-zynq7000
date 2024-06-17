@@ -11,60 +11,51 @@ module debouncer #(
 );
     // TODO: fill in neccesary logic to implement the wrapping counter and the saturating counters
     // Some initial code has been provided to you, but feel free to change it however you like
-    // One wrapping counter is required, one saturating counter is needed for each bit of glitchy_signal
+    // One wrapping counter is required
+    // One saturating counter is needed for each bit of glitchy_signal
     // You need to think of the conditions for reseting, clock enable, etc. those registers
     // Refer to the block diagram in the spec
 
-    wire [WRAPPING_CNT_WIDTH-1:0] sample_cnt_max;
-    wire [SAT_CNT_WIDTH-1:0] pluse_cnt_max;
-    assign sample_cnt_max = SAMPLE_CNT_MAX[WRAPPING_CNT_WIDTH-1:0];
-    assign pluse_cnt_max = PULSE_CNT_MAX[SAT_CNT_WIDTH-1:0];
-
-    reg [WRAPPING_CNT_WIDTH-1:0] wrapping_counter;
-    reg [SAT_CNT_WIDTH-1:0] saturating_counter [WIDTH-1:0];
-
-    integer j;
-    initial begin
-        wrapping_counter = 0;
-        for (j = 0; j < WIDTH; j=j+1) begin
-            saturating_counter[j] = 0;
-        end
-    end
-
+    wire [WRAPPING_CNT_WIDTH-1:0] wrapping_count, wrapping_count_next;
     wire sample_pluse;
 
-    always @(posedge clk) begin
-        if (wrapping_counter == sample_cnt_max - 1) begin
-            wrapping_counter <= 0;
-        end
-        else begin
-            wrapping_counter <= wrapping_counter + 1;
-        end
-    end
+    REGISTER_R # (
+        .N      ( WRAPPING_CNT_WIDTH    )
+    ) wrapping_counter (
+        .q   	( wrapping_count        ),
+        .d   	( wrapping_count_next   ),
+        .rst    ( sample_pluse          ),
+        .clk 	( clk                   )
+    );
 
-    assign sample_pluse = (wrapping_counter == sample_cnt_max - 1) ? 1 : 0;
+    assign sample_pluse = (wrapping_count == SAMPLE_CNT_MAX - 1) ? 1 : 0;
+    assign wrapping_count_next = wrapping_count + 1;
+
+    wire [SAT_CNT_WIDTH-1:0] saturating_counter [WIDTH-1:0];
+    wire [SAT_CNT_WIDTH-1:0] saturating_counter_next [WIDTH-1:0];
+    wire [WIDTH-1:0] saturating_counter_max ;
+    wire [WIDTH-1:0] saturating_counter_next_ce;
+    wire [WIDTH-1:0] saturating_counter_rst;
 
     genvar i;
     generate
-        for (i = 0; i < WIDTH; i=i+1) begin
-            always @(posedge clk) begin
-                if (sample_pluse && glitchy_signal[i]) begin
-                    if (saturating_counter[i] < pluse_cnt_max) begin
-                        saturating_counter[i] <= saturating_counter[i] + 1;
-                    end
-                    else begin
-                        saturating_counter[i] <= saturating_counter[i];
-                    end
-                end
-                else if(!glitchy_signal[i]) begin
-                    saturating_counter[i] <= 0;
-                end
-                else begin
-                    saturating_counter[i] <= saturating_counter[i];
-                end
-            end
-            assign debounced_signal[i] = (saturating_counter[i] == pluse_cnt_max) ? 1 : 0;
+        for (i = 0; i < WIDTH; i = i + 1) begin
+            assign saturating_counter_next[i] = saturating_counter[i] + 1;
+            assign saturating_counter_max[i] = saturating_counter[i] == PULSE_CNT_MAX;
+            assign saturating_counter_rst[i] = ~glitchy_signal[i];
+            assign saturating_counter_next_ce[i] = ~saturating_counter_max[i] & sample_pluse & glitchy_signal[i];
+            REGISTER_R_CE # (
+                .N      ( SAT_CNT_WIDTH                 )
+            ) saturating_counterer (
+                .q      ( saturating_counter[i]         ),
+                .d      ( saturating_counter_next[i]    ),
+                .rst    ( saturating_counter_rst[i]     ),
+                .ce     ( saturating_counter_next_ce[i] ),
+                .clk    ( clk                           )
+            );
         end
     endgenerate
+
+    assign debounced_signal = saturating_counter_max;
 
 endmodule
