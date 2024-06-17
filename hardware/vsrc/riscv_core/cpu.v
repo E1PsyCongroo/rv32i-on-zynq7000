@@ -129,29 +129,25 @@ module cpu #(
             .ce(csr_we),
             .clk(clk));
 
-    // TODO: Your code to implement a fully functioning RISC-V core
-    // Add as many modules as you want
-    // Feel free to move the memory modules around
-    // outports wire
     /* IF Stage */
-    wire                    flush;
     wire                    jmp_flag;
     reg  [1:0]              pc_sel;
     wire [DWIDTH-1:0]       pc_in, pc_if, pc_plus_4;
     wire [DWIDTH-1:0]       inst, inst_if;
     wire [DWIDTH-1:0]       jmp_pc;
 
+    assign pc_sel = {rst, jmp_flag};
     MuxKey # (
-        .NR_KEY     ( 4             ),
-        .KEY_LEN    ( 2             ),
-        .DATA_LEN   ( DWIDTH        )
+        .NR_KEY     ( 4         ),
+        .KEY_LEN    ( 2         ),
+        .DATA_LEN   ( DWIDTH    )
     ) u_pc_sel (
-        .out        ( pc_in         ),
-        .key        ( pc_sel        ),
+        .out        ( pc_in     ),
+        .key        ( pc_sel    ),
         .lut        ({
             2'b00, pc_plus_4,
             2'b01, jmp_pc,
-            2'b10, pc_if,
+            2'b10, RESET_PC,
             2'b11, RESET_PC
         })
     );
@@ -173,16 +169,6 @@ module cpu #(
     assign imem_addrb = pc_in[IMEM_AWIDTH-1+2:2];
 
     REGISTER_R # (
-        .N      ( 1         )
-    ) u_flush (
-        .q      ( flush     ),
-        .d      ( jmp_flag  ),
-        // .rst    ( rst       ),
-        .rst    ( 1         ),
-        .clk    ( clk       )
-    );
-
-    REGISTER_R # (
         .N      ( DWIDTH    ),
         .INIT   ( RESET_PC  )
     ) pc (
@@ -193,7 +179,7 @@ module cpu #(
     );
 
     assign pc_plus_4 = pc_if + 4;
-    assign inst_if = flush ? `INST_NOP : inst;
+    assign inst_if = inst;
 
     /* EX Stage */
     wire [6:0] opcode = inst_if[6:0];
@@ -304,12 +290,6 @@ module cpu #(
     );
 
     assign jmp_flag = jmp_type || (br_type && br_taken);
-    always @(*) begin
-        if (rst) pc_sel = 2'b11;
-        else if (flush) pc_sel = 2'b10;
-        else if (jmp_flag) pc_sel = 2'b01;
-        else pc_sel = 2'b00;
-    end
 
     assign jmp_pc = alu_sum;
 
@@ -345,7 +325,7 @@ module cpu #(
     instCounter u_instCounter(
         .clk       	( clk        ),
         .rst       	( counterRst ),
-        .valid     	( ~flush     ),
+        .valid     	( 1          ),
         .instCount 	( instCount  )
     );
 
